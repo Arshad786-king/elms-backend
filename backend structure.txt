@@ -34,7 +34,14 @@ mern-backend/
 ├── utils/
 │   └── generateToken.js
 │
+├── scripts/
+│   ├── checkEmployee.js
+│   ├── checkLeaveStatuses.js
+│   ├── migrateLeaveStatus.js
+│   └── testManagerAssignment.js
+│
 ├── .env
 ├── .gitignore
 ├── package.json
+├── package-lock.json
 └── server.js

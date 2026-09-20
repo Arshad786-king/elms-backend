@@ -47,12 +47,17 @@ const getMyLeaves = async (req, res) => {
             .sort({ createdAt: -1 });
 
         res.status(200).json({
-            message: "Leave requests retrieved successfully",
+            message:
+                "Leave requests retrieved successfully",
+
             leaves
         });
 
     } catch (error) {
-        console.error("Get my leaves error:", error);
+        console.error(
+            "Get my leaves error:",
+            error
+        );
 
         res.status(500).json({
             message:
@@ -98,7 +103,9 @@ const createLeave = async (req, res) => {
         // --------------------------------------------------------
 
         const normalizedLeaveType =
-            String(leaveType).trim().toLowerCase();
+            String(leaveType)
+                .trim()
+                .toLowerCase();
 
         if (
             !ALLOWED_LEAVE_TYPES.includes(
@@ -116,7 +123,8 @@ const createLeave = async (req, res) => {
         // 3. Validate reason
         // --------------------------------------------------------
 
-        const cleanReason = String(reason).trim();
+        const cleanReason =
+            String(reason).trim();
 
         if (cleanReason.length < 3) {
             return res.status(400).json({
@@ -124,7 +132,6 @@ const createLeave = async (req, res) => {
                     "Leave reason must contain at least 3 characters"
             });
         }
-
 
         if (cleanReason.length > 500) {
             return res.status(400).json({
@@ -138,8 +145,11 @@ const createLeave = async (req, res) => {
         // 4. Validate dates
         // --------------------------------------------------------
 
-        const start = new Date(startDate);
-        const end = new Date(endDate);
+        const start =
+            new Date(startDate);
+
+        const end =
+            new Date(endDate);
 
         if (
             isNaN(start.getTime()) ||
@@ -152,7 +162,10 @@ const createLeave = async (req, res) => {
         }
 
 
+        // --------------------------------------------------------
         // Normalize time
+        // --------------------------------------------------------
+
         start.setHours(0, 0, 0, 0);
         end.setHours(0, 0, 0, 0);
 
@@ -173,7 +186,8 @@ const createLeave = async (req, res) => {
         // 6. Start date cannot be in the past
         // --------------------------------------------------------
 
-        const today = new Date();
+        const today =
+            new Date();
 
         today.setHours(0, 0, 0, 0);
 
@@ -190,7 +204,10 @@ const createLeave = async (req, res) => {
         // --------------------------------------------------------
 
         const leaveDays =
-            calculateLeaveDays(start, end);
+            calculateLeaveDays(
+                start,
+                end
+            );
 
         if (leaveDays <= 0) {
             return res.status(400).json({
@@ -204,9 +221,10 @@ const createLeave = async (req, res) => {
         // 8. Get latest employee data
         // --------------------------------------------------------
 
-        const employee = await User.findById(
-            req.user._id
-        );
+        const employee =
+            await User.findById(
+                req.user._id
+            );
 
         if (!employee) {
             return res.status(404).json({
@@ -216,10 +234,53 @@ const createLeave = async (req, res) => {
         }
 
 
+        // --------------------------------------------------------
+        // 8A. Verify employee is active
+        // --------------------------------------------------------
+
         if (!employee.isActive) {
             return res.status(403).json({
                 message:
                     "Your account is inactive. You cannot apply for leave."
+            });
+        }
+
+
+        // --------------------------------------------------------
+        // 8B. Verify reporting manager is assigned
+        // --------------------------------------------------------
+
+        if (!employee.reportingManager) {
+            return res.status(400).json({
+                message:
+                    "No reporting manager is assigned to your account. Please contact the administrator."
+            });
+        }
+
+
+        // --------------------------------------------------------
+        // 8C. Verify assigned manager exists and is active
+        // --------------------------------------------------------
+
+        const manager =
+            await User.findOne({
+                _id:
+                    employee.reportingManager,
+
+                role:
+                    "manager",
+
+                isActive:
+                    true
+            })
+                .select(
+                    "_id name email"
+                );
+
+        if (!manager) {
+            return res.status(400).json({
+                message:
+                    "Your assigned reporting manager is unavailable. Please contact the administrator."
             });
         }
 
@@ -240,13 +301,22 @@ const createLeave = async (req, res) => {
         // 10. Check leave balance
         // --------------------------------------------------------
 
-        if (leaveDays > availableBalance) {
+        if (
+            leaveDays >
+            availableBalance
+        ) {
             return res.status(400).json({
                 message:
                     `Insufficient ${normalizedLeaveType} leave balance`,
-                leaveType: normalizedLeaveType,
-                requestedDays: leaveDays,
-                availableDays: availableBalance
+
+                leaveType:
+                    normalizedLeaveType,
+
+                requestedDays:
+                    leaveDays,
+
+                availableDays:
+                    availableBalance
             });
         }
 
@@ -257,7 +327,8 @@ const createLeave = async (req, res) => {
 
         const overlappingLeave =
             await Leave.findOne({
-                employee: employee._id,
+                employee:
+                    employee._id,
 
                 status: {
                     $in: [
@@ -267,11 +338,13 @@ const createLeave = async (req, res) => {
                 },
 
                 startDate: {
-                    $lte: end
+                    $lte:
+                        end
                 },
 
                 endDate: {
-                    $gte: start
+                    $gte:
+                        start
                 }
             });
 
@@ -280,14 +353,20 @@ const createLeave = async (req, res) => {
             return res.status(400).json({
                 message:
                     "The selected dates overlap with an existing pending or approved leave.",
+
                 overlappingLeave: {
-                    id: overlappingLeave._id,
+                    id:
+                        overlappingLeave._id,
+
                     leaveType:
                         overlappingLeave.leaveType,
+
                     startDate:
                         overlappingLeave.startDate,
+
                     endDate:
                         overlappingLeave.endDate,
+
                     status:
                         overlappingLeave.status
                 }
@@ -299,66 +378,55 @@ const createLeave = async (req, res) => {
         // 12. Create leave request
         // --------------------------------------------------------
 
-        const leave = await Leave.create({
-            employee: employee._id,
+        const leave =
+            await Leave.create({
+                employee:
+                    employee._id,
 
-            leaveType:
-                normalizedLeaveType,
+                leaveType:
+                    normalizedLeaveType,
 
-            startDate: start,
+                startDate:
+                    start,
 
-            endDate: end,
+                endDate:
+                    end,
 
-            reason: cleanReason,
+                reason:
+                    cleanReason,
 
-            status: "Pending"
+                status:
+                    "Pending"
+            });
+
+
+        // --------------------------------------------------------
+        // 13. Notify ONLY assigned reporting manager
+        // --------------------------------------------------------
+
+        await Notification.create({
+            recipient:
+                manager._id,
+
+            type:
+                "leave_submitted",
+
+            title:
+                "New Leave Request",
+
+            message:
+                `${employee.name} submitted a ${normalizedLeaveType} leave request for ${leaveDays} day${leaveDays === 1 ? "" : "s"}.`,
+
+            leave:
+                leave._id,
+
+            isRead:
+                false
         });
 
 
         // --------------------------------------------------------
-        // 13. Find all active managers
-        // --------------------------------------------------------
-
-        const managers = await User.find({
-            role: "manager",
-            isActive: true
-        }).select("_id");
-
-
-        // --------------------------------------------------------
-        // 14. Notify active managers
-        // --------------------------------------------------------
-
-        if (managers.length > 0) {
-
-            const notifications =
-                managers.map((manager) => ({
-                    recipient:
-                        manager._id,
-
-                    type:
-                        "leave_submitted",
-
-                    title:
-                        "New Leave Request",
-
-                    message:
-                        `${employee.name} submitted a ${normalizedLeaveType} leave request for ${leaveDays} day${leaveDays === 1 ? "" : "s"}.`,
-
-                    leave:
-                        leave._id,
-
-                    isRead: false
-                }));
-
-            await Notification.insertMany(
-                notifications
-            );
-        }
-
-
-        // --------------------------------------------------------
-        // 15. Populate employee information
+        // 14. Populate employee information
         // --------------------------------------------------------
 
         await leave.populate(
@@ -368,7 +436,7 @@ const createLeave = async (req, res) => {
 
 
         // --------------------------------------------------------
-        // 16. Send response
+        // 15. Send response
         // --------------------------------------------------------
 
         res.status(201).json({
@@ -380,7 +448,8 @@ const createLeave = async (req, res) => {
             leaveDays,
 
             remainingBalance:
-                availableBalance - leaveDays
+                availableBalance -
+                leaveDays
         });
 
     } catch (error) {
@@ -403,18 +472,22 @@ const createLeave = async (req, res) => {
 
 const getLeaveById = async (req, res) => {
     try {
-        const leave = await Leave.findOne({
-            _id: req.params.id,
-            employee: req.user._id
-        })
-            .populate(
-                "employee",
-                "name email"
-            )
-            .populate(
-                "reviewedBy",
-                "name email"
-            );
+        const leave =
+            await Leave.findOne({
+                _id:
+                    req.params.id,
+
+                employee:
+                    req.user._id
+            })
+                .populate(
+                    "employee",
+                    "name email"
+                )
+                .populate(
+                    "reviewedBy",
+                    "name email"
+                );
 
 
         if (!leave) {
@@ -439,7 +512,10 @@ const getLeaveById = async (req, res) => {
         );
 
 
-        if (error.name === "CastError") {
+        if (
+            error.name ===
+            "CastError"
+        ) {
             return res.status(400).json({
                 message:
                     "Invalid leave ID"
@@ -461,10 +537,14 @@ const getLeaveById = async (req, res) => {
 
 const cancelLeave = async (req, res) => {
     try {
-        const leave = await Leave.findOne({
-            _id: req.params.id,
-            employee: req.user._id
-        });
+        const leave =
+            await Leave.findOne({
+                _id:
+                    req.params.id,
+
+                employee:
+                    req.user._id
+            });
 
 
         if (!leave) {
@@ -479,7 +559,10 @@ const cancelLeave = async (req, res) => {
         // Only pending leaves can be cancelled
         // --------------------------------------------------------
 
-        if (leave.status !== "Pending") {
+        if (
+            leave.status !==
+            "Pending"
+        ) {
             return res.status(400).json({
                 message:
                     `Cannot cancel leave with status: ${leave.status}`
@@ -488,54 +571,95 @@ const cancelLeave = async (req, res) => {
 
 
         // --------------------------------------------------------
+        // Get latest employee data
+        // --------------------------------------------------------
+
+        const employee =
+            await User.findById(
+                req.user._id
+            );
+
+        if (!employee) {
+            return res.status(404).json({
+                message:
+                    "Employee account not found"
+            });
+        }
+
+
+        // --------------------------------------------------------
+        // Verify reporting manager is assigned
+        // --------------------------------------------------------
+
+        if (!employee.reportingManager) {
+            return res.status(400).json({
+                message:
+                    "No reporting manager is assigned to your account."
+            });
+        }
+
+
+        // --------------------------------------------------------
+        // Find assigned active manager
+        // --------------------------------------------------------
+
+        const manager =
+            await User.findOne({
+                _id:
+                    employee.reportingManager,
+
+                role:
+                    "manager",
+
+                isActive:
+                    true
+            })
+                .select(
+                    "_id name email"
+                );
+
+
+        if (!manager) {
+            return res.status(400).json({
+                message:
+                    "Your assigned reporting manager is unavailable."
+            });
+        }
+
+
+        // --------------------------------------------------------
         // Update leave status
         // --------------------------------------------------------
 
-        leave.status = "Cancelled";
+        leave.status =
+            "Cancelled";
 
         await leave.save();
 
 
         // --------------------------------------------------------
-        // Find all active managers
+        // Notify ONLY assigned reporting manager
         // --------------------------------------------------------
 
-        const managers = await User.find({
-            role: "manager",
-            isActive: true
-        }).select("_id");
+        await Notification.create({
+            recipient:
+                manager._id,
 
+            type:
+                "leave_cancelled",
 
-        // --------------------------------------------------------
-        // Notify active managers
-        // --------------------------------------------------------
+            title:
+                "Leave Request Cancelled",
 
-        if (managers.length > 0) {
+            message:
+                `${employee.name} cancelled their ${leave.leaveType} leave request.`,
 
-            const notifications =
-                managers.map((manager) => ({
-                    recipient:
-                        manager._id,
+            leave:
+                leave._id,
 
-                    type:
-                        "leave_cancelled",
-
-                    title:
-                        "Leave Request Cancelled",
-
-                    message:
-                        `${req.user.name} cancelled their ${leave.leaveType} leave request.`,
-
-                    leave:
-                        leave._id,
-
-                    isRead: false
-                }));
-
-            await Notification.insertMany(
-                notifications
-            );
-        }
+            isRead:
+                false
+        });
 
 
         // --------------------------------------------------------
@@ -556,7 +680,10 @@ const cancelLeave = async (req, res) => {
         );
 
 
-        if (error.name === "CastError") {
+        if (
+            error.name ===
+            "CastError"
+        ) {
             return res.status(400).json({
                 message:
                     "Invalid leave ID"
