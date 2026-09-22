@@ -1,3 +1,4 @@
+
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -20,7 +21,16 @@ connectDB();
 
 
 // Middleware
-app.use(cors());
+app.use(
+    cors({
+        origin: [
+            "http://localhost:5173",
+            "https://elms-frontend-nu.vercel.app"
+        ],
+        credentials: true
+    })
+);
+
 app.use(express.json());
 
 
@@ -39,8 +49,14 @@ app.use("/api/leaves", leaveRoutes);
 
 // Manager routes
 app.use("/api/manager", managerRoutes);
+
+
 // Admin routes
 app.use("/api/admin", adminRoutes);
+
+
+// Notification routes
+app.use("/api/notifications", notificationRoutes);
 
 
 // Test route
@@ -49,13 +65,17 @@ app.get("/", (req, res) => {
         message: "ELMS Backend is running successfully"
     });
 });
-// Notification routes
-app.use("/api/notifications", notificationRoutes);
 
 
-// Start server
+// Start server locally
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`ELMS Backend running on port ${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, "0.0.0.0", () => {
+        console.log(`ELMS Backend running on port ${PORT}`);
+    });
+}
+
+
+// Export app for Vercel
+module.exports = app;
