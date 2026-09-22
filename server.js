@@ -1,4 +1,3 @@
-
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
@@ -21,15 +20,15 @@ connectDB();
 
 
 // Middleware
-app.use(
-    cors({
-        origin: [
-            "http://localhost:5173",
-            "https://elms-frontend-nu.vercel.app"
-        ],
-        credentials: true
-    })
-);
+app.use(cors({
+    origin: [
+        "http://localhost:5173",
+        "https://elms-frontend-nu.vercel.app"
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
 app.use(express.json());
 
