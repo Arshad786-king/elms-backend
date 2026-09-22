@@ -15,10 +15,6 @@ const passwordRoutes = require("./routes/passwordRoutes");
 const app = express();
 
 
-// Connect MongoDB
-connectDB();
-
-
 // Middleware
 app.use(cors({
     origin: [
@@ -31,6 +27,21 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+
+// Ensure MongoDB is connected before handling requests
+app.use(async (req, res, next) => {
+    try {
+        await connectDB();
+        next();
+    } catch (error) {
+        console.error("MongoDB connection error:", error);
+
+        res.status(500).json({
+            message: "Database connection failed"
+        });
+    }
+});
 
 
 // Authentication routes
