@@ -19,7 +19,7 @@ const app = express();
 app.use(cors({
     origin: [
         "http://localhost:5173",
-        "https://elms-frontend-nu.vercel.app"
+        "https://elms-frontend-cubbn8i8m-arshad786-king.vercel.app"
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
